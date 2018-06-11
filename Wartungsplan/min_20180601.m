@@ -1,6 +1,6 @@
 input_nonlinear;
 %Anzahl Zeitschritte
-n=11;
+n=21;
 skalierung=1000; %Betriebsstunden pro Zeitschritt
 X0=linspace(0,(n-1)*skalierung,n);
 
@@ -8,7 +8,7 @@ X0=linspace(0,(n-1)*skalierung,n);
 % Ist Maß für die Risikobereitschaft des Entscheiders
 drisk=1*CP(1);
 %Array für Wartungsfolgen (erschöpfend), j:Anzahl Komponenten
-for j=1:2    
+for j=1:length(CIS)    
     L = ones(1,n);
     L(2,:) = zeros(1,length(L)); %// example input
     L2 = mat2cell(L.', ones(1,size(L,2)), size(L,1)); %// step 1
