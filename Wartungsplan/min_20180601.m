@@ -1,3 +1,4 @@
+addpath("FailureExpectations");
 input_nonlinear;
 %Anzahl Zeitschritte
 n=21;
@@ -35,8 +36,10 @@ end
 G=zeros(m,n,j);
 EWC=zeros(m,n,j);
 EWCEL=zeros(m,n,j);
-for jj=1:2
+for jj=1:2 %TODO: Hier nicht j statt 2?
     for ll=1:m
+        %Zurücksetzen der Variable für jede Zeile
+        indexNachWartung = 1;
         for mm=1:n
             %Wenn erster Zeitschritt Wartung, Ausfallwahrscheinlichkeit = 0;
             if mm == 1
@@ -56,16 +59,28 @@ for jj=1:2
                 end
             %Ab zweitem Zeitschritt    
             elseif mm >= 2
+                %Für Zeitpunkt 1 überspringen, da kein Vorgänger vorhanden
+                %(und dementsprechend auch kein Bedarf zum Resetten)
+                if mm-1 > 0
+                    %Wenn in einem Zeitschritt zuvor eine Wartung war, wird
+                    %der Index auf 1 gesetzt
+                    if G(ll, mm-1, jj) == 0
+                            indexNachWartung = 1;
+                    end
+                end
                 if mplan(ll,mm,jj)==1
                     G(ll,mm,jj)=0;
                     EWC(ll,mm,jj)=0;
                     EWCEL(ll,mm,jj)=0;
                 elseif mplan(ll,mm,jj)==0
-                    % Differenz der Wahrscheinlichkeit im Intervall addieren
-                    G(ll,mm,jj)=G(ll,mm-1,jj)+calcG((mm-(mm-1))*skalierung);
+                    % Mit dem Index den richtigen Wert nach der letzten Wartung berechnen
+                    %TODO: der letzte Wert "1" stellt den Komponentenindex
+                    %dar. Also mit j ersetzen, richtig?
+                    G(ll,mm,jj)=calcG(indexNachWartung*skalierung, n, skalierung, 1);
                     % G(ll,mm)=G(ll,mm-1)+0.01*skalierung;
                     EWC(ll,mm,jj)=G(ll,mm,jj)*CR(jj);
                     EWCEL(ll,mm,jj)=G(ll,mm,jj)*CEL(jj);
+                    indexNachWartung = indexNachWartung + 1;
                 end           
             end
             % Wenn Ausfallwahrscheinlichkeit innerhalb der 
@@ -110,9 +125,14 @@ subplot(2,1,2);
 bar(X0,Y0);
 axis([0 n*skalierung 0 1.5]);
 
-function y = calcG(x)
-    global T;
-    y = 1-exp(-x/T(1));
+function y = calcG(x, n, skalierung, componentIndex)
+    %TODO: Gamma-Berechnung nach input_nonlinear auslagern und mit
+    %Komponenten koppeln
+    %Dann werden die Übergabeparameter n und skalierung überflüssig, da der
+    %componentIndex dafür ausreicht
+    gamma1 = calculate_gamma(n *skalierung + 1, "sinkend");
+    y = calculate_FailureExpectation(x, gamma1(x), "kugellager", componentIndex);
+    
 end
 %% noch zu tun:
 % 3. mehrere Komponenten
