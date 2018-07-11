@@ -1,7 +1,7 @@
 input_nonlinear;
 %Anzahl Zeitschritte
-n=6;
-skalierung=1000; %Betriebsstunden pro Zeitschritt
+n=5;
+skalierung=2000; %Betriebsstunden pro Zeitschritt
 X0=linspace(0,(n-1)*skalierung,n);
 
 % Entscheidungsvariable, wann gewartetet werden soll
@@ -48,7 +48,7 @@ for jj=1:numcomp
 %                     elseif mplan(ll,n,jj) == 1
                     G(ll,mm,jj)=0;
                     EWC(ll,mm,jj)=0;
-                    EWCEL(ll,mm,jj)=G(ll,mm,jj)*CEL(jj);
+                    EWCEL(ll,mm,jj)=G(ll,mm,jj)*(CEL(jj)+CR(jj));
 %                    end
                 elseif mplan(ll,mm,jj) == 0
                     for b1=1:n
@@ -89,8 +89,8 @@ for jj=1:numcomp
         end
     end
 %Kosten durch Stillstand
-    A=zeros(m,n,jj);
-    A(:,:,jj)=mplan(:,:,jj)*CEL(jj);
+%     A=zeros(m,n,jj);
+%     A(:,:,jj)=mplan(:,:,jj)*CEL(jj);
     % reduziertes Array mplan mplanred ohne Zeilen mit inf erstellen
     for i3=1:length(mplan(:,:,jj))
         if mplan(i3,:,jj) == inf
@@ -185,6 +185,7 @@ intervallC_20180611;
 % Minimale Kosten identifizieren
 ergebnis=min(CGES);
 row=find(CGES==ergebnis);
+calcavailibility;
 %Umrechnen
 % k_1=floor(k/m);
 % k_2(1)=k(1)-k_1(1)*m;
@@ -194,7 +195,7 @@ row=find(CGES==ergebnis);
 %     pp=k(oo);
 %     A(oo)=sum(mplan1(pp,:))*MTTRD(1);
 % end
-Y01perm=cell2mat(combmplan(row(80),:));
+Y01perm=cell2mat(combmplan(row(1),:));
 Y0=zeros(length(Y01perm)/numcomp,numcomp);
 for i5=1:n
     for i7=1:numcomp

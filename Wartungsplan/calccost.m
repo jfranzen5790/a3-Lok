@@ -1,9 +1,8 @@
 % Wartungsschritte und -kosten pro Zeitschritt
-combmplan=cell(numcomp*max(q10),n);
-combCGES=zeros(numcomp*max(q10),n);
-CGES=zeros(numcomp*max(q10),1);
+combmplan=cell(max(q10)^numcomp,n);
+combCGES=zeros(max(q10)^numcomp,n);
+CGES=zeros(max(q10)^numcomp,1);
 i4=1;
-icost=zeros(numcomp,1);
 
 if numcomp==3
     for bb=1:length(mplanred)
@@ -38,11 +37,13 @@ elseif numcomp==4
                         combmplan{i4,ee}=vector;
                         cell_cisize=size(cell_ci);
                         for i6=1:cell_cisize(1,2)
-                            check=ismember(combmplan{i4,ee},cell_ci{1,i6});
-                            if sum(check)==numcomp
+%                             check=ismember(combmplan{i4,ee},cell_ci{1,i6});
+%                             if sum(check)==numcomp
+%                                 combCGES(i4,ee)=sum(combCP(:,i6))+combCELmax(1,i6);
+%                             end
+                            if isequal(combmplan{i4,ee},cell_ci{1,i6})
                                 combCGES(i4,ee)=sum(combCP(:,i6))+combCELmax(1,i6);
                             end
-                            check=0;
                         end
                     end
                 % Kosten der Wartungsstrategie = Summe der Kosten für
