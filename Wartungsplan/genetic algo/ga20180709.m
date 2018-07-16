@@ -83,7 +83,7 @@ avai=0.7;
 % options = gaoptimset('PlotFcns',@cost);
 
 
-options = optimoptions('ga', 'PlotFcn', @gaplotbestf);
+options = optimoptions('ga', 'PlotFcn', @gaplotbestf, 'MaxGenerations', 10000, 'MaxStallGenerations', 1000, 'FunctionTolerance', 1e-12);
 % options.InitialPopulationRange = [1 8];
 [X,fval,exitflag,output,population] = ga(@cost,n,[],[],[],[],lb, ub, nonlcon, IntCon, options);
 
@@ -219,8 +219,7 @@ function y=cost(x)
     for j1=1:numcomp
         for j2=1:n
             if EWC(j1,j2)>=CP(1,j1)
-                C(1,j2)=max(CP(:,j1));
-%                 x(1,n+1)=-1;
+                C(1,j2)=10^7;
             end
         end
     end
