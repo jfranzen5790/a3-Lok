@@ -1,7 +1,7 @@
 global skalierung numcomp asize cell_ci CGES n C transmat G EWC A TGESh;
 
 %Anzahl Zeitschritte
-n=5;
+n=6;
 skalierung=2000; %Betriebsstunden pro Zeitschritt
 %Umrechnung in Jahre für Geldwert
 arbeitszeit=8;
@@ -17,7 +17,7 @@ ergC=zeros(numcomp,n);
 ergEWC=zeros(numcomp,n);
 ergG=zeros(numcomp,n);
 ergA=zeros(numcomp,n);
-ergwartung=ones(1,n);
+ergwartung=ones(1,numcomp);
 ergAred=zeros(2,n);
 
 
@@ -71,7 +71,6 @@ end
 
 %% Optimierung
 lb=ones(1,n);
-% lb(1,n+1)=0;
 ub=ones(1,n)*asize(1,2);
 ub(1,1)=1;
 lb(1,n)=asize(1,2);
@@ -79,19 +78,19 @@ lb(1,n)=asize(1,2);
 nonlcon=[];
 IntCon=1:n;
 
-avai=0.7;
 % options = gaoptimset('PlotFcns',@cost);
 
 
-options = optimoptions('ga', 'PlotFcn', @gaplotbestf);
+% options = optimoptions('gamultiobj', 'PlotFcn', @gaplotbestf);
 % options.InitialPopulationRange = [1 8];
-[X,fval,exitflag,output,population] = ga(@cost,n,[],[],[],[],lb, ub, nonlcon, IntCon, options);
+[X,fval] = gamultiobj(@cost,n,[],[],[],[],lb, ub, nonlcon);
 
 %% Auswertung des Optimierungsergebnisses
 % Ergebnis in Vektor und Wartungsfolge wandeln
-Xint=uint8(X);
-erg=zeros(numcomp,length(Xint));
-for j1=1:length(Xint)-1
+Xint=uint8(X(2,:));
+Xintsize=size(Xint);
+erg=zeros(numcomp,Xintsize(1,2));
+for j1=1:Xintsize(1,2)
     ergvec=cell_ci{1,Xint(j1)};
     for j2=1:numcomp
         erg(j2,j1)=ergvec(1,j2);
@@ -99,34 +98,34 @@ for j1=1:length(Xint)-1
 end
 % Kosten und Ausfallwahrscheinlichkeiten für Zeitschritte bestimmen
 
-        for j3=1:n
-            for j4=1:numcomp
-                if j3 == 1
-                    if erg(j4,j3)== 1
-                        ergG(j4,j3)=0;
-                        ergA(j4,j3) = MTTRD(1,j4);
-                    elseif erg(j4,j3) == 0
-                        ergG(j4,j3)=calcG(j3*skalierung,j4);
-                        ergA(j4,j3) = 0;
-                    end
-                elseif j3 >= 2
-                    if erg(j4,j3)== 1
-                        ergG(j4,j3)=0;
-                        ergwartung(1,j4)=j3;
-                        ergA(j4,j3) = MTTRD(1,j4);
-                    elseif erg(j4,j3) == 0
-                        ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
-                    end
-                    ergEWC(j4,j3)=ergG(j4,j3)*(CEL(1,j4)+CR(1,j4))/CP(j4);
-                end
+for j3=1:n
+    for j4=1:numcomp
+        if j3 == 1
+            if erg(j4,j3)== 1
+                ergG(j4,j3)=0;
+                ergA(j4,j3) = MTTRD(1,j4);
+            elseif erg(j4,j3) == 0
+                ergG(j4,j3)=calcG(j3*skalierung,j4);
+                ergA(j4,j3) = 0;
             end
+        elseif j3 >= 2
+            if erg(j4,j3)== 1
+                ergG(j4,j3)=0;
+                ergwartung(1,j4)=j3;
+                ergA(j4,j3) = MTTRD(1,j4);
+            elseif erg(j4,j3) == 0
+                ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
+            end
+            ergEWC(j4,j3)=(ergG(j4,j3)*(CEL(1,j4)+CR(1,j4)))/CP(j4);
         end
-        for j5=1:n
-            ergAred(1,j5)=max(ergA(:,j5));
-            ergAred(2,j5)=ergAred(1,j5)*8;
-        end
-        avai=(TGESh-sum(ergAred(2,:)))/TGESh;
-        disp(avai);
+    end
+end
+for j5=1:n
+    ergAred(1,j5)=max(ergA(:,j5));
+    ergAred(2,j5)=ergAred(1,j5)*8;
+end
+avai=(TGESh-sum(ergAred(2,:)))/TGESh;
+disp(avai);
 
         
 %% Print des Ergebnisses        
@@ -153,7 +152,9 @@ function y=cost(x)
     G=zeros(numcomp, n);
     A=zeros(numcomp, n);
     EWC=zeros(numcomp, n);
+    avhelp=1;
     trans=cell(1,n);
+    x=round(x);
     for i1=1:n
         trans{1,i1}=cell_ci{1,x(i1)};
         transvec=cell_ci{1,x(i1)};
@@ -193,12 +194,11 @@ function y=cost(x)
                     wartung(1,i5)=i4;
                 end
             end
-            
-%             if G(i5,i4) == 0
-%                 EWC(i5,i4) = 0;
-%             elseif G(i5,i4) > 0
-%                 EWC(i5,i4)=G(i5,i4)*(CEL(1,i5)+CR(1,i5));
-%             end
+            if G(i5,i4) == 0
+                EWC(i5,i4) = 0;
+            elseif G(i5,i4) > 0
+                EWC(i5,i4)=G(i5,i4)*(CEL(1,i5)+CR(1,i5));
+            end
 %             %Prüfen, ob EW der Kosten > als Präventive Kosten sind
 %             if EWC(i5,i4)>=0
 %                 C(1,i4)=10000000;
@@ -218,8 +218,9 @@ function y=cost(x)
     end
     for j1=1:numcomp
         for j2=1:n
-            if EWC(j1,j2)>=CP(1,j1)
-                C(1,j2)=max(CP(:,j1));
+            if EWC(j1,j2)>=0.5*CP(1,j1)
+%                 C(1,j2)=10^6;
+                avhelp=0;
 %                 x(1,n+1)=-1;
             end
         end
@@ -230,15 +231,19 @@ function y=cost(x)
         %Zeitschritte umrechnen
         Ared(2,j5)=ceil(Ared(1,j5)*8/skalierung);
     end
-    avail=(TGESh-sum(Ared(1,:))*8)/TGESh;
-
+    if avhelp == 0
+        y(2)=0;
+    elseif avhelp >= 0
+        y(2)=1-((TGESh-sum(Ared(1,:))*8)/TGESh);
+    end
 %     nahe beeinanderliegende Lösung rausfiltern
-%     for j6=1:n-max(Ared(2,:))
-%         if sum(transmat(:,j6+1:j6+max(Ared(2,:)))) > 0
-%             C(1,j6)=10^7;          
-%         end
-%     end
-    y = sum(C(1,:));
+    for j6=1:n-max(Ared(2,:))
+        if sum(transmat(:,j6+1:j6+max(Ared(2,:)))) > 0
+            C(1,j6)=10^6;
+                
+        end
+    end
+    y(1) = sum(C(1,:));
 end
 
 

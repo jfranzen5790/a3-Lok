@@ -2,14 +2,14 @@ global MTTR MTTRD TV DTRd DTRh CIS CR CP b CEL T;
 
 %Anzahl Komponenten
 numcomp=4;
-
-%Gesamte Betriebszeit
-% In Stunden bei 8 Arbeitsstunden pro Tag
-arbeitszeit=8;
-% In Betriebsstunden
-TGESh=6000;
-% In Tagen (220 Arbeitstage pro Jahr)
-TGESd=TGESh/arbeitszeit;
+% 
+% %Gesamte Betriebszeit
+% % In Stunden bei 8 Arbeitsstunden pro Tag
+% arbeitszeit=8;
+% % In Betriebsstunden
+% TGESh=6000;
+% % In Tagen (220 Arbeitstage pro Jahr)
+% TGESd=TGESh/arbeitszeit;
 
 
 % TGES=TGESD*arbeitszeit;
