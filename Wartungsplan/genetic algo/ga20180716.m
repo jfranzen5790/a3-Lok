@@ -1,8 +1,8 @@
 global skalierung numcomp asize cell_ci CGES n C transmat G EWC A TGESh;
 
 %Anzahl Zeitschritte
-n=20;
-skalierung=448; %Betriebsstunden pro Zeitschritt
+n=21;
+skalierung=80; %Betriebsstunden pro Zeitschritt
 %Umrechnung in Jahre für Geldwert
 arbeitszeit=8;
 TGESh=skalierung*n;
@@ -70,22 +70,30 @@ for i2=1:length(cell_ci)
 end
 
 %% Optimierung
-lb=ones(1,n*2);
-ub=ones(1,n*2);
+lb=ones(1,n);
+ub=ones(1,n);
 ub(1,1:n)=asize(1,2);
 ub(1,1)=1;
 lb(1,n)=1;
 ub(1,n)=1;
 
 nonlcon=[];
-IntCon=1:n;
+% IntCon=1:n;
 
 % options = gaoptimset('PlotFcns',@cost);
 
+IP=zeros(7,n);
+IP(1,:)=[1 16 16 16 16 8 16 16 16 16 5 16 16 16 16 16 16 7 16 16 1];
+IP(2,:)=[1 16 4 1 3 16 16 12 16 16 8 16 16 16 16 16 16 16 16 16 1];
+IP(3,:)=[1 16 16 7 16 16 16 16 11 16 8 16 5 16 16 16 16 16 16 16 1];
+IP(4,:)=[1 16 16 16 16 8 16 16 10 16 16 16 16 16 6 16 14 16 16 16 1];
+IP(5,:)=[1 16 16 16 4 16 16 16 16 16 8 16 16 4 16 8 16 16 16 16 1];
+IP(6,:)=[1 16 5 12 16 16 14 16 12 16 16 16 16 13 16 1 16 16 16 16 1];
+IP(7,:)=[1 16 16 16 8 16 15 16 16 16 8 16 12 16 16 8 16 16 16 16 1];
 
-% options = optimoptions('gamultiobj', 'PlotFcn', @gaplotbestf);
-% options.InitialPopulationRange = [1 8];
-[X,fval] = gamultiobj(@cost,2*n,[],[],[],[],lb, ub, nonlcon);
+options = optimoptions('gamultiobj','FunctionTolerance', 10e-8, 'MaxStallGenerations', 200, 'InitialPopulation',IP);
+
+[X,fval] = gamultiobj(@cost,n,[],[],[],[],lb, ub, nonlcon, options);
 
 %% Auswertung des Optimierungsergebnisses
 % Ergebnis in Vektor und Wartungsfolge wandeln
@@ -100,40 +108,61 @@ for j1=1:Xintsize(1,2)
 end
 % Kosten und Ausfallwahrscheinlichkeiten für Zeitschritte bestimmen
 
+erglifetime=zeros(numcomp,n);
+
 for j3=1:n
     for j4=1:numcomp
         if j3 == 1
             if erg(j4,j3)== 1
+                erglifetime(j4,j3)=0;
                 ergG(j4,j3)=0;
-                ergA(j4,j3) = MTTRD(1,j4);
+                ergA(j4,j3) = 0; %erste Wartung darf nicht mitzählen
             elseif erg(j4,j3) == 0
                 ergG(j4,j3)=calcG(j3*skalierung,j4);
                 ergA(j4,j3) = 0;
+                erglifetime(j4,j3)=j3*skalierung;
             end
-        elseif j3 >= 2
+        elseif (1 < j3) && (j3 < n)
             if erg(j4,j3)== 1
                 ergG(j4,j3)=0;
                 ergwartung(1,j4)=j3;
                 ergA(j4,j3) = MTTRD(1,j4);
+                erglifetime(j4,j3)=0;
             elseif erg(j4,j3) == 0
                 ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
+                erglifetime(j4,j3)=(j3-ergwartung(1,j4))*skalierung;
             end
-            ergEWC(j4,j3)=(ergG(j4,j3)*(CEL(1,j4)+CR(1,j4)))/CP(j4);
+        elseif j3 == n
+            if erg(j4,j3)== 1
+                ergG(j4,j3)=0;
+                ergwartung(1,j4)=j3;
+                ergA(j4,j3) = 0;
+                erglifetime(j4,j3)=0;
+            elseif erg(j4,j3) == 0
+                ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
+                erglifetime(j4,j3)=(j3-ergwartung(1,j4))*skalierung;
+            end
         end
+            ergEWC(j4,j3)=(ergG(j4,j3)*(CEL(1,j4)+CR(1,j4)))/CP(j4);
     end
 end
+
 for j5=1:n
     ergAred(1,j5)=max(ergA(:,j5));
     ergAred(2,j5)=ergAred(1,j5)*8;
 end
-avai=(TGESh-sum(ergAred(2,:)))/TGESh;
+avai=((TGESh-sum(ergAred(2,:)))/TGESh)*100;
 disp(avai);
 
         
 %% Print des Ergebnisses        
 X0=linspace(0,(n-1)*skalierung,n);
 figure
+hold on
+patch('XData', [0 0 500 500], 'YData', [0 4 4 0], 'EdgeColor', 'none', 'FaceColor', 'red', 'FaceAlpha', 0.5);
 bar(X0,erg', 'stacked');
+avaistr=num2str(avai);
+fprintf('Verfügbarkeit: %s Prozent', avaistr);
 
 % function f=objfcn(x)
 %     f = (x(1) + x(2))^2 - x(3);
@@ -160,10 +189,12 @@ function y=cost(x)
     global A G EWC CEL CR asize cell_ci CP CGES n C numcomp transmat skalierung MTTRD TGESh;    
     %Umwandeln in Vektor
     transmat=zeros(numcomp, n);
-    G=zeros(numcomp, n);
-    A=zeros(numcomp, n);
-    EWC=zeros(numcomp, n);
-    avhelp=1;
+    G=zeros(numcomp, n); % Ausfallwahrscheinlichkeiten
+    A=zeros(numcomp, n); % Ausfallzeiten
+    EWC=zeros(numcomp, n); %Erwartungswert der Audfallkosten
+    avhelp=1; % Hilfsvariable, um Ergebnis ungültig zu machen
+    lifetime = zeros(numcomp, n); % Lebensdauer beim jeweiligen Zeitschritt
+    Ared=zeros(2,n); % Red. Stillstandszeiten
     trans=cell(1,n);
     x=round(x);
     for i1=1:n
@@ -178,7 +209,7 @@ function y=cost(x)
     for i2=1:n
         for i3=1:asize(1,2)
             if trans{1,i2} == cell_ci{1,i3}
-                C(1,i2) = CGES(1,i3);
+                C(1,i2)= CGES(1,i3)*(1.02*floor(i2/8));
                 break
             elseif trans{1,i2} ~= cell_ci{1,i3}
                 C(1,i2) = 0;
@@ -192,15 +223,19 @@ function y=cost(x)
         for i4=1:n
             if i4==1
                 if transmat(i5,i4) == 0
-                    G(i5,i4)=calcG(i4*skalierung,i5);
+                    lifetime(i5,i4)=i4*skalierung;
+                    G(i5,i4)=calcG(lifetime(i5,i4),i5);
                 elseif transmat(i5,i4) == 1
                     G(i5,i4) = 0;
+                    lifetime(i5,i4)=0;
                 end
             elseif i4 >= 2
                 if transmat(i5,i4) == 0
-                    G(i5,i4)=calcG((i4-wartung(1,i5))*skalierung,i5);
-%                     G(i5,i4)=calcG((i4)*skalierung,i5);
+                    lifetime(i5,i4)=(i4-wartung(1,i5))*skalierung;
+                    G(i5,i4)=calcG(lifetime(i5,i4),i5);
+%                     G(i5,i4)=calcG((i4-wartung(1,i5))*skalierung,i5);
                 elseif transmat(i5,i4) == 1
+                    lifetime(i5,i4)=0;
                     G(i5,i4) = 0;
                     wartung(1,i5)=i4;
                 end
@@ -220,10 +255,18 @@ function y=cost(x)
     for i6=1:numcomp
         for i8=1:n
             EWC(i6,i8)=G(i6,i8)*(CEL(1,i6)+CR(1,i6));
-                if transmat(i6,i8) == 0
+                % erster Durchlauf "System neu" darf nicht berücksichtigt
+                % werden
+                if i8 == 1
                     A(i6,i8)=0;
-                elseif transmat(i6,i8) == 1
-                    A(i6,i8)=MTTRD(1,i6);
+                elseif (1 < i8) && (i8 < n)
+                    if transmat(i6,i8) == 0
+                        A(i6,i8)=0;
+                    elseif transmat(i6,i8) == 1
+                        A(i6,i8)=MTTRD(1,i6);
+                    end
+                elseif i8 == n
+                    A(i6,i8)=0;
                 end
         end
     end
@@ -236,7 +279,7 @@ function y=cost(x)
             end
         end
     end
-    Ared=zeros(2,n);
+    
     for j5=1:n
         Ared(1,j5)=max(A(:,j5));
         %Zeitschritte umrechnen
@@ -254,6 +297,11 @@ function y=cost(x)
 %                 
 %         end
 %     end
+    ma=0;
+    for j5=1:numcomp    
+        ma = ma + sum(transmat(j5,:));
+    end
+    y(3) = ma;
     y(1) = sum(C(1,:));
 end
 
@@ -263,3 +311,20 @@ function aw = calcG(x,i)
     global T;
     aw = 1-exp(-x/T(i));
 end
+
+
+%% Notizen
+
+% Labels mit Informationen zur optimalen Lösung
+
+% Anzahl der Komponenten erhöhen
+
+% Güte der gefundenen Lösung beurteilen
+
+% Ausfallzeit des Fahrzeugs wird bisher nicht auf alle Komponenten
+% übertragen
+
+% Stillstände als Zeitfenster markieren/einblenden
+
+% Unterscheidung technische Verfügbarkeit/betriebliche Verfügbarkeit
+

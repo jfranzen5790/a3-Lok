@@ -1,8 +1,8 @@
 global skalierung numcomp asize cell_ci CGES n C transmat G EWC A TGESh;
 
 %Anzahl Zeitschritte
-n=5;
-skalierung=2000; %Betriebsstunden pro Zeitschritt
+n=51;
+skalierung=448; %Betriebsstunden pro Zeitschritt
 %Umrechnung in Jahre für Geldwert
 arbeitszeit=8;
 TGESh=skalierung*n;
@@ -74,7 +74,7 @@ lb=ones(1,n);
 % lb(1,n+1)=0;
 ub=ones(1,n)*asize(1,2);
 ub(1,1)=1;
-lb(1,n)=asize(1,2);
+ub(1,n-1)=1;
 
 nonlcon=[];
 IntCon=1:n;
@@ -219,7 +219,7 @@ function y=cost(x)
     for j1=1:numcomp
         for j2=1:n
             if EWC(j1,j2)>=CP(1,j1)
-                C(1,j2)=10^7;
+                C(1,j2)=inf;
             end
         end
     end
@@ -231,10 +231,10 @@ function y=cost(x)
     end
     avail=(TGESh-sum(Ared(1,:))*8)/TGESh;
 
-%     nahe beeinanderliegende Lösung rausfiltern
+% %     nahe beeinanderliegende Lösung rausfiltern
 %     for j6=1:n-max(Ared(2,:))
 %         if sum(transmat(:,j6+1:j6+max(Ared(2,:)))) > 0
-%             C(1,j6)=10^7;          
+%             C(1,j6)=inf;          
 %         end
 %     end
     y = sum(C(1,:));

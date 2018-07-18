@@ -6,7 +6,16 @@ a=[1 0];
 % for ci=1:asize(1,2)
 %     cell_ci{1,ci}=[combintervall(1,ci) combintervall(2,ci) combintervall(3,ci)];
 % end    
-if numcomp==2
+
+if numcomp == 1
+    combintervall = a;
+    asize=size(combintervall);
+    cell_ci=cell(1,asize(1,2));
+    for ci=1:asize(1,2)
+        cell_ci{1,ci}=[combintervall(1,ci)];
+    end
+    
+elseif numcomp==2
     combintervall=combvec(combvec(a,a));
     asize=size(combintervall);
     cell_ci=cell(1,asize(1,2));
