@@ -1,7 +1,7 @@
 global skalierung numcomp asize cell_ci CGES n C transmat G EWC A TGESh;
 
 %Anzahl Zeitschritte
-n=21;
+n=51;
 skalierung=80; %Betriebsstunden pro Zeitschritt
 %Umrechnung in Jahre für Geldwert
 arbeitszeit=8;
@@ -82,22 +82,17 @@ nonlcon=[];
 
 % options = gaoptimset('PlotFcns',@cost);
 
-IP=zeros(7,n);
-IP(1,:)=[1 16 16 16 16 8 16 16 16 16 5 16 16 16 16 16 16 7 16 16 1];
-IP(2,:)=[1 16 4 1 3 16 16 12 16 16 8 16 16 16 16 16 16 16 16 16 1];
-IP(3,:)=[1 16 16 7 16 16 16 16 11 16 8 16 5 16 16 16 16 16 16 16 1];
-IP(4,:)=[1 16 16 16 16 8 16 16 10 16 16 16 16 16 6 16 14 16 16 16 1];
-IP(5,:)=[1 16 16 16 4 16 16 16 16 16 8 16 16 4 16 8 16 16 16 16 1];
-IP(6,:)=[1 16 5 12 16 16 14 16 12 16 16 16 16 13 16 1 16 16 16 16 1];
-IP(7,:)=[1 16 16 16 8 16 15 16 16 16 8 16 12 16 16 8 16 16 16 16 1];
+initPop;
+options = optimoptions('gamultiobj','FunctionTolerance', 10e-4, 'MaxStallGenerations', 200, 'InitialPopulation',IP);
 
-options = optimoptions('gamultiobj','FunctionTolerance', 10e-8, 'MaxStallGenerations', 200, 'InitialPopulation',IP);
+%  options = optimoptions('gamultiobj','FunctionTolerance', 10e-4, 'MaxStallGenerations', 200);
+
 
 [X,fval] = gamultiobj(@cost,n,[],[],[],[],lb, ub, nonlcon, options);
 
 %% Auswertung des Optimierungsergebnisses
 % Ergebnis in Vektor und Wartungsfolge wandeln
-Xint=uint8(X(2,:));
+Xint=uint8(X(1,:));
 Xintsize=size(Xint);
 erg=zeros(numcomp,Xintsize(1,2));
 for j1=1:Xintsize(1,2)
@@ -151,8 +146,8 @@ for j5=1:n
     ergAred(1,j5)=max(ergA(:,j5));
     ergAred(2,j5)=ergAred(1,j5)*8;
 end
-avai=((TGESh-sum(ergAred(2,:)))/TGESh)*100;
-disp(avai);
+% avai=((TGESh-sum(ergAred(2,:)))/TGESh)*100;
+% disp(avai);
 
         
 %% Print des Ergebnisses        
@@ -161,8 +156,8 @@ figure
 hold on
 patch('XData', [0 0 500 500], 'YData', [0 4 4 0], 'EdgeColor', 'none', 'FaceColor', 'red', 'FaceAlpha', 0.5);
 bar(X0,erg', 'stacked');
-avaistr=num2str(avai);
-fprintf('Verfügbarkeit: %s Prozent', avaistr);
+% avaistr=num2str(avai);
+% fprintf('Verfügbarkeit: %s Prozent', avaistr);
 
 % function f=objfcn(x)
 %     f = (x(1) + x(2))^2 - x(3);
@@ -191,7 +186,7 @@ function y=cost(x)
     transmat=zeros(numcomp, n);
     G=zeros(numcomp, n); % Ausfallwahrscheinlichkeiten
     A=zeros(numcomp, n); % Ausfallzeiten
-    EWC=zeros(numcomp, n); %Erwartungswert der Audfallkosten
+    EWC =zeros(numcomp, n); %Erwartungswert der Audfallkosten
     avhelp=1; % Hilfsvariable, um Ergebnis ungültig zu machen
     lifetime = zeros(numcomp, n); % Lebensdauer beim jeweiligen Zeitschritt
     Ared=zeros(2,n); % Red. Stillstandszeiten
@@ -202,14 +197,13 @@ function y=cost(x)
         transvec=cell_ci{1,x(i1)};
         for i7=1:numcomp
             transmat(i7,i1)=transvec(1,i7);        
-        end
-        
+        end   
     end
     %Kosten für jeden Zeitpunkt bestimmen
     for i2=1:n
         for i3=1:asize(1,2)
             if trans{1,i2} == cell_ci{1,i3}
-                C(1,i2)= CGES(1,i3)*(1.02*floor(i2/8));
+                C(1,i2)= CGES(1,i3)*(1.02*floor(i2/8)); %Zinssatz berücksichtigen
                 break
             elseif trans{1,i2} ~= cell_ci{1,i3}
                 C(1,i2) = 0;
@@ -217,7 +211,7 @@ function y=cost(x)
         end
     end
     
-    %Ausfallwahrscheinlichkeiten bestimmten
+    % Ausfallwahrscheinlichkeiten bestimmten
     for i5=1:numcomp
         wartung=ones(1,numcomp);
         for i4=1:n
@@ -233,7 +227,6 @@ function y=cost(x)
                 if transmat(i5,i4) == 0
                     lifetime(i5,i4)=(i4-wartung(1,i5))*skalierung;
                     G(i5,i4)=calcG(lifetime(i5,i4),i5);
-%                     G(i5,i4)=calcG((i4-wartung(1,i5))*skalierung,i5);
                 elseif transmat(i5,i4) == 1
                     lifetime(i5,i4)=0;
                     G(i5,i4) = 0;
@@ -245,11 +238,6 @@ function y=cost(x)
             elseif G(i5,i4) > 0
                 EWC(i5,i4)=G(i5,i4)*(CEL(1,i5)+CR(1,i5));
             end
-%             %Prüfen, ob EW der Kosten > als Präventive Kosten sind
-%             if EWC(i5,i4)>=0
-%                 C(1,i4)=10000000;
-%                 disp('Hallo');
-%             end
         end
     end
     for i6=1:numcomp
@@ -275,7 +263,6 @@ function y=cost(x)
             if EWC(j1,j2)>=CP(1,j1)
                 C(1,j2)=inf;
                 avhelp=0;
-%                 x(1,n+1)=-1;
             end
         end
     end
@@ -285,11 +272,40 @@ function y=cost(x)
         %Zeitschritte umrechnen
         Ared(2,j5)=ceil(Ared(1,j5)*8/skalierung);
     end
-    if avhelp == 0
-        y(2)=inf;
-    elseif avhelp >= 0
-        y(2)=1-((TGESh-sum(Ared(1,:))*8)/TGESh);
+    gueltig=0; %Hilfsvariable zur Überprüfung, ob die Stillstandszeiten eingehalten werden
+    for j5=1:n
+        gueltig=0;
+        dauer=0;
+        if Ared(2,j5)>=1
+            dauer=Ared(2,j5);
+        end
+        if dauer >= 2
+            for j6=1:dauer -1
+                if j5+j6 <= n
+                    gueltig=gueltig+Ared(1,j5+j6);
+                end
+            end
+        end
+        if gueltig > 0
+            avhelp=0; %Schleife abbrechen, wenn ungültige Reihe
+            break;
+        end
     end
+
+    
+    
+    
+    if avhelp == 0
+        y(2)=1;
+        y(1)=inf;
+    elseif avhelp >= 1
+        y(2)=1-((TGESh-(sum(Ared(1,:))*8))/TGESh);
+        y(1) = sum(C(1,:));
+        if y(2) < 0
+            disp("Negative Zahl");
+        end
+    end
+    
 % %     nahe beeinanderliegende Lösung rausfiltern
 %     for j6=1:n-max(Ared(2,:))
 %         if sum(transmat(:,j6+1:j6+max(Ared(2,:)))) > 0
@@ -298,11 +314,14 @@ function y=cost(x)
 %         end
 %     end
     ma=0;
-    for j5=1:numcomp    
-        ma = ma + sum(transmat(j5,:));
+    % Anzahl der Stillstände minieren
+    for j5=1:n
+        if sum(transmat(:,j5)) >= 1
+            ma = ma + 1;
+        end
     end
     y(3) = ma;
-    y(1) = sum(C(1,:));
+
 end
 
 
@@ -328,3 +347,4 @@ end
 
 % Unterscheidung technische Verfügbarkeit/betriebliche Verfügbarkeit
 
+% Ranken der Kombinationne
