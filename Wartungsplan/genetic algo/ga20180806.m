@@ -1,4 +1,4 @@
-global skalierung numcomp asize cell_ci CGES n Cmax arbeitszeit transmat G EWC A TGESh;
+global PopSize skalierung numcomp asize cell_ci CGES n Cmax arbeitszeit transmat G EWC A TGESh;
 
 
 %Umrechnung in Jahre für Geldwert
@@ -76,16 +76,33 @@ nonlcon=[];
 % IntCon=1:n;
 
 % options = gaoptimset('PlotFcns',@cost);
-
 initPop;
 
-PopSize=50;
-options = optimoptions('ga', 'PlotFcn', 'gaplotbestf', 'CrossoverFraction', 1.0, 'MigrationFraction', 0.01, 'FunctionTolerance', 10e-4, 'PopulationSize', PopSize,  'MaxStallGenerations', 100, 'InitialPopulation',IP);
+% 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2, , 'PlotFcn', 'gaplotbestf'
+options = optimoptions('ga', 'FunctionTolerance', 10e-4, 'PopulationSize', PopSize,  'MaxStallGenerations', 100, 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2, 'InitialPopulation',IP);
 % options = optimoptions('ga', 'PlotFcn', 'gaplotbestf', 'FunctionTolerance', 10e-8, 'MaxStallGenerations', 200);
 %  options = optimoptions('gamultiobj','FunctionTolerance', 10e-4, 'MaxStallGenerations', 200);
 
     IntCon=(1:n);
-    [X,fval] = ga(@cost,n,[],[],[],[],lb, ub, [], IntCon, options);
+    [X,fval] = ga(@cost,n,[],[],[],[], lb, ub, [], IntCon, options);
+% 
+%% Simulated Annealing
+saoptions=optimoptions(@simulannealbnd,'PlotFcns',{@saplotbestx,...
+          @saplotbestf,@saplotx,@saplotf}, 'FunctionTolerance', 10e-4);
+%Randbedingungen für Simulated Annealing
+ubsa=ones(1,n)*asize(1,2);
+ubsa(1,1)=1;
+lbsa=ones(1,n);
+% Festsetzen der Variablen, welche durch GA als keine Wartung festgelegt
+% wurden
+sizeIP=size(IP);
+for i=1:sizeIP(1,2)
+    if IP(1,i)==asize(1,2)
+        lbsa(1,i)=asize(1,2);
+    end
+end
+[X2, fval2] = simulannealbnd(@cost,X,lbsa,ubsa,saoptions);
+%     
     
 %% Auswertung des Optimierungsergebnisses
 % Ergebnis in Vektor und Wartungsfolge wandeln
@@ -118,53 +135,7 @@ for j1=1:Xintsize(1,2)
         erg(j2,j1)=ergvec(1,j2);
     end
 end
-% % Kosten und Ausfallwahrscheinlichkeiten für Zeitschritte bestimmen
-% 
-% erglifetime=zeros(numcomp,n);
-% 
-% for j3=1:n
-%     for j4=1:numcomp
-%         if j3 == 1
-%             if erg(j4,j3)== 1
-%                 erglifetime(j4,j3)=0;
-%                 ergG(j4,j3)=0;
-%                 ergA(j4,j3) = 0; %erste Wartung darf nicht mitzählen
-%             elseif erg(j4,j3) == 0
-%                 ergG(j4,j3)=calcG(j3*skalierung,j4);
-%                 ergA(j4,j3) = 0;
-%                 erglifetime(j4,j3)=j3*skalierung;
-%             end
-%         elseif (1 < j3) && (j3 < n)
-%             if erg(j4,j3)== 1
-%                 ergG(j4,j3)=0;
-%                 ergwartung(1,j4)=j3;
-%                 ergA(j4,j3) = MTTRD(1,j4);
-%                 erglifetime(j4,j3)=0;
-%             elseif erg(j4,j3) == 0
-%                 ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
-%                 erglifetime(j4,j3)=(j3-ergwartung(1,j4))*skalierung;
-%             end
-%         elseif j3 == n
-%             if erg(j4,j3)== 1
-%                 ergG(j4,j3)=0;
-%                 ergwartung(1,j4)=j3;
-%                 ergA(j4,j3) = 0;
-%                 erglifetime(j4,j3)=0;
-%             elseif erg(j4,j3) == 0
-%                 ergG(j4,j3)=calcG((j3-ergwartung(1,j4))*skalierung,j4);
-%                 erglifetime(j4,j3)=(j3-ergwartung(1,j4))*skalierung;
-%             end
-%         end
-%             ergEWC(j4,j3)=(ergG(j4,j3)*(CEL(1,j4)+CR(1,j4)))/CP(j4);
-%     end
-% end
-% 
-% for j5=1:n
-%     ergAred(1,j5)=max(ergA(:,j5));
-%     ergAred(2,j5)=ergAred(1,j5)*8;
-% end
-% % avai=((TGESh-sum(ergAred(2,:)))/TGESh)*100;
-% % disp(avai);
+
 idraw=1;
 for i=1:n
     if sum(transmat(:,i)) > 0
@@ -207,7 +178,7 @@ pie([techav, 1-techav],labels)
 
 %% Zielfkt. Optimierung
 function y=cost(x)
-    global A G EWC CP n C numcomp skalierung trans transmat TGESh Cmax;    
+    global A G EWC CP n C numcomp decisionfactor skalierung trans transmat TGESh Cmax;    
     %Umwandeln in Vektor
 %     transmat=zeros(numcomp, n);
 %     G=zeros(numcomp, n); % Ausfallwahrscheinlichkeiten
@@ -215,7 +186,7 @@ function y=cost(x)
 %     EWC =zeros(numcomp, n); %Erwartungswert der Audfallkosten
     avhelp=1; % Hilfsvariable, um Ergebnis ungültig zu machen
 %     trans=cell(1,n);
-%     x=round(x);
+    x=round(x);
 
     %Wartungsplan aus Eingangsvariablen erstellen und Kosten pro Schritt
     %bestimmen
@@ -233,7 +204,7 @@ function y=cost(x)
     
     for i=1:numcomp
         for j=1:n
-            if EWC(i,j)>CP(1,i)
+            if EWC(i,j)>decisionfactor*CP(1,i)
 %                 C(1,j)=inf;
                 avhelp=0;
             end
@@ -423,13 +394,9 @@ end
 
 %% Notizen
 
-% Labels mit Informationen zur optimalen Lösung
-
 % Anzahl der Komponenten erhöhen
 
 % Güte der gefundenen Lösung beurteilen
-
-% Stillstände als Zeitfenster markieren/einblenden
 
 % Unterscheidung technische Verfügbarkeit/betriebliche Verfügbarkeit
 

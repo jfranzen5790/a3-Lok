@@ -1,7 +1,18 @@
-global MTTR MTTRD TV DTRd DTRh CIS CR CP b CEL T;
+global MTTR MTTRD TV DTRd DTRh CIS CR CP b CEL T n skalierung decisionfactor;
 
 %Anzahl Komponenten
 numcomp=7;
+
+%Zeitschritte
+n=201;
+
+%Größe Population
+PopSize=50;
+
+%
+decisionfactor=1.0;
+
+skalierung=80; %Betriebsstunden pro Zeitschritt
 
 
 % Mittlere Reparaturdauer der jeweiligen Komponente, Stunden

@@ -1,4 +1,4 @@
-global skalierung numcomp asize cell_ci CGES n Cmax arbeitszeit transmat G EWC A TGESh;
+global PopSize skalierung numcomp asize cell_ci CGES n Cmax arbeitszeit transmat G EWC A TGESh;
 
 
 %Umrechnung in Jahre für Geldwert
@@ -76,16 +76,21 @@ nonlcon=[];
 % IntCon=1:n;
 
 % options = gaoptimset('PlotFcns',@cost);
-
 initPop;
 
-PopSize=50;
-options = optimoptions('ga', 'PlotFcn', 'gaplotbestf', 'CrossoverFraction', 1.0, 'MigrationFraction', 0.01, 'FunctionTolerance', 10e-4, 'PopulationSize', PopSize,  'MaxStallGenerations', 100, 'InitialPopulation',IP);
+% 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2, 
+options = optimoptions('ga', 'PlotFcn', 'gaplotbestf', 'FunctionTolerance', 10e-4, 'PopulationSize', PopSize,  'MaxStallGenerations', 100, 'InitialPopulation',IP);
 % options = optimoptions('ga', 'PlotFcn', 'gaplotbestf', 'FunctionTolerance', 10e-8, 'MaxStallGenerations', 200);
 %  options = optimoptions('gamultiobj','FunctionTolerance', 10e-4, 'MaxStallGenerations', 200);
 
     IntCon=(1:n);
-    [X,fval] = ga(@cost,n,[],[],[],[],lb, ub, [], IntCon, options);
+    [X,fval] = ga(@cost,n,[],[],[],[], lb, ub, [], IntCon, options);
+% 
+%     % Simulated Annealing
+%     saoptions=optimoptions(@simulannealbnd,'PlotFcn','saplotbestf');
+% 
+%     [X2, fval2] = simulannealbnd(@cost,X,lb,ub,saoptions);
+%     
     
 %% Auswertung des Optimierungsergebnisses
 % Ergebnis in Vektor und Wartungsfolge wandeln
@@ -215,7 +220,7 @@ function y=cost(x)
 %     EWC =zeros(numcomp, n); %Erwartungswert der Audfallkosten
     avhelp=1; % Hilfsvariable, um Ergebnis ungültig zu machen
 %     trans=cell(1,n);
-%     x=round(x);
+    x=round(x);
 
     %Wartungsplan aus Eingangsvariablen erstellen und Kosten pro Schritt
     %bestimmen
@@ -423,13 +428,9 @@ end
 
 %% Notizen
 
-% Labels mit Informationen zur optimalen Lösung
-
 % Anzahl der Komponenten erhöhen
 
 % Güte der gefundenen Lösung beurteilen
-
-% Stillstände als Zeitfenster markieren/einblenden
 
 % Unterscheidung technische Verfügbarkeit/betriebliche Verfügbarkeit
 
