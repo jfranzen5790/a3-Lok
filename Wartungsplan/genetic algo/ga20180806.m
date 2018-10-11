@@ -1,5 +1,11 @@
 global PopSize skalierung numcomp asize cell_ci CGES n Cmax arbeitszeit transmat G EWC A TGESh allCosts costList gueltigCounter ungueltigCounter iterationsTillNewValidValue iterationsTillNewValidValue_ListOfallValues longestRuntime allInputValues multipleInputValuesCounter;
 
+
+addpath("../");
+input_nonlinear_20181010;
+generatecombinations;
+
+
 %Umrechnung in Jahre für Geldwert
 arbeitszeit=8;
 TGESh=skalierung*n;
@@ -23,9 +29,7 @@ longestRuntime = 0;
 allInputValues = {};
 multipleInputValuesCounter = 0;
 
-addpath("../");
-input_nonlinear_20181010;
-generatecombinations;
+
 
 % Kosten für obig bestimmte Wartungskombinationen pro Zeitschritt
 combCP=zeros(asize(1,1),asize(1,2));
@@ -95,19 +99,17 @@ initPop;
 %  options = optimoptions('gamultiobj','FunctionTolerance', 10e-4, 'MaxStallGenerations', 200);
 
 %Letzte funktionierende Version
-%options = optimoptions('ga', 'FunctionTolerance', 10e-4, 'PopulationSize', 150,  'MaxStallGenerations', 100, 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2);
-
-%options = optimoptions('ga', 'FunctionTolerance', 10e-8, 'PopulationSize', 150,  'MaxStallGenerations', 200, 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2);
 options = optimoptions('ga', 'FunctionTolerance', 1e-15, 'PopulationSize', 50,  'MaxStallGenerations', 400, 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2 , 'PlotFcn', 'gaplotbestf',  'InitialPopulation',IP);
 %options = optimoptions('ga', 'FunctionTolerance', 1e-15, 'PopulationSize', 50,  'MaxStallGenerations', 400, 'CrossoverFraction', 0.8, 'MigrationFraction', 0.2 , 'PlotFcn', 'gaplotbestf');
 
-    %nlcon = @mycon;
-    nlcon = @mycon;
+    nlcon = @Nebenbedingungen;
     
     IntCon=(1:n);
     %[X,fval] = ga(@cost,n,[],[],[],[], lb, ub, nlcon, IntCon, options);
     %[X,fval] = ga(@cost_angepasst,n,[],[],[],[], lb, ub, nlcon);%, IntCon, options);
+    
     [X,fval] = ga(@cost_angepasst,n,[],[],[],[], lb, ub, nlcon, IntCon, options);
+    %[X,fval] = ga(@cost_angepasst,n,[],[],[],[], lb, ub, [], IntCon, options);
 % 
 %% Simulated Annealing
 %saoptions=optimoptions(@simulannealbnd,'PlotFcns',{@saplotbestx,...
