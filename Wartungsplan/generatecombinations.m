@@ -53,6 +53,8 @@ elseif numcomp >= 5
     for i=1:asize(1,2)
         if numcomp == 5
         cell_ci{1,i}=[combintervall(1,i) combintervall(2,i) combintervall(3,i) combintervall(4,i) combintervall(5,i)];
+        elseif numcomp == 6
+        cell_ci{1,i}=[combintervall(1,i) combintervall(2,i) combintervall(3,i) combintervall(4,i) combintervall(5,i) combintervall(6,i)];
         elseif numcomp == 7
         cell_ci{1,i}=[combintervall(1,i) combintervall(2,i) combintervall(3,i) combintervall(4,i) combintervall(5,i) combintervall(6,i) combintervall(7,i)];
         end
